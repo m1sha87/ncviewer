@@ -1,0 +1,27 @@
+#dragFile {
+    margin: 10px;
+    text-align: center;
+    border: 5px dotted black;
+    max-width: 1000px;
+    height: 500px;
+    background-color: #c5b7be;
+}
+
+#dragFile div {
+    font-size: 30px;
+    margin-top: 200px;
+}
+
+canvas {
+    border: 1px dotted black;
+    background-color: #d4d6da;
+}
+
+#currPos {
+    position: fixed;
+    height: 20px;
+    width: 100px;
+    color: red;
+    left: 10px;
+    bottom: 10px;
+}
