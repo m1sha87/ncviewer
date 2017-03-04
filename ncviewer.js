@@ -1,4 +1,5 @@
 var commands = [];
+var view = document.getElementById("view");
 var cnv = document.getElementById("a");
 var ctx = cnv.getContext("2d");
 var tools = [];
@@ -43,7 +44,7 @@ function readFile(file) {
 
     reader.readAsText(file);
     document.getElementById("load").setAttribute("hidden", "true");
-    document.getElementById("view").removeAttribute("hidden");
+    view.removeAttribute("hidden");
 }
 
 function parseNC(str) {
@@ -178,6 +179,14 @@ function draw() {
     ctx.translate(2500, 0);
     ctx.strokeStyle = colors[2];
     ctx.strokeRect(-sheet.x, 0, sheet.x, sheet.y);
+    ctx.strokeRect(-500, 500, 400, 400);
+    var canvas = document.createElement('canvas');
+    canvas.setAttribute('id', 'c');
+    var 
+    view.appendChild(canvas);
+    cnv = document.getElementById("b");
+    ctx = cnv.getContext("2d");
+    ctx.translate(2500, 0);
     var len = commands.length;
     for (var i=0; i < len; i++) {
         if (Object.keys(commands[i]).length === 0) {continue;}
@@ -332,7 +341,7 @@ specialTools[75] = function (x, y, c) { // HEX 6.2
     ctx.lineTo(3.5, 0);
     ctx.lineTo(2, 3.1);
     ctx.lineTo(-2, 3.1);
-    ctx.lineTo(-3.5, 0);
+    ctx.closePath();
     ctx.stroke();
     ctx.restore();
 };

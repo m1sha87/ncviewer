@@ -12,16 +12,32 @@
     margin-top: 200px;
 }
 
-canvas {
+
+#currPos {
+position: fixed;
+height: 20px;
+width: 100px;
+color: red;
+left: 10px;
+bottom: 10px;
+}
+
+#view {
+position: relative;
+}
+
+#a {
+    position: absolute;
+    z-index: 1;
     border: 1px dotted black;
     background-color: #d4d6da;
 }
 
-#currPos {
-    position: fixed;
-    height: 20px;
-    width: 100px;
-    color: red;
-    left: 10px;
-    bottom: 10px;
+.layer {
+    position: absolute;
+    background-color: transparent;
+}
+
+#b {
+    z-index: 20;
 }
