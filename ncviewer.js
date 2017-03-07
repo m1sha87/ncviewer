@@ -1,6 +1,6 @@
 var commands = [];
 var view = document.getElementById("view");
-var cnv = document.getElementById("a");
+var cnv = document.getElementById("cnv");
 var ctx = cnv.getContext("2d");
 var tools = [];
 var sheet = null;
@@ -8,6 +8,7 @@ var currTool = null;
 var currX = null;
 var currY = null;
 var currC = null;
+var currI = 0;
 var colors = ['#000000', '#FF00FF', '#800800', '#FF0000', '#800000', '#FFFF00', '#00FF00', '#008000', '#008080', '#000080',
     '#000000', '#FF00FF', '#800800', '#FF0000', '#800000', '#FFFF00', '#00FF00', '#008000', '#008080', '#000080'];
 
@@ -87,7 +88,7 @@ function parseNC(str) {
             commands[i].m = m;
         }
     }
-    draw();
+    startDraw();
 }
 
 function findSheet(str) {
@@ -168,70 +169,105 @@ function findTool(str) {
             found[4] = parseInt(found[4]) / 100
         }
         var toolId = tools.length;
-        console.log(toolId);
+        console.log('toolId: ' + toolId);
         tools[toolId] = {'type': type, 'a': found[3], 'b': found[4], 'color': colors[toolId]};
         return toolId;
     }
 }
 
-function draw() {
+function startDraw() {
     // console.log(commands);
     ctx.translate(2500, 0);
     ctx.strokeStyle = colors[2];
     ctx.strokeRect(-sheet.x, 0, sheet.x, sheet.y);
-    ctx.strokeRect(-500, 500, 400, 400);
-    var canvas = document.createElement('canvas');
-    canvas.setAttribute('id', 'c');
-    var 
-    view.appendChild(canvas);
-    cnv = document.getElementById("b");
-    ctx = cnv.getContext("2d");
-    ctx.translate(2500, 0);
     var len = commands.length;
     for (var i=0; i < len; i++) {
-        if (Object.keys(commands[i]).length === 0) {continue;}
-        console.log(commands[i]);
-        if (commands[i].tool >= 0) {
-            var id = commands[i].tool;
-            currTool = tools[id];
-            ctx.strokeStyle = colors[id];
-            console.log(currTool);
-            continue;
-        }
-
-        if (commands[i].m >= 0) {
-            if (checkM(commands[i].m)) {
-                currM = commands[i].m;
-            }
-            // console.log('m: ' + currM + ' : ' + commands[i].m);
-        }
-
-        if (currTool && commands[i].h) {
-            // console.log('h: ' + commands[i].h);
-            hitLine(commands[i].x, commands[i].y, commands[i].h);
-            continue;
-        }
-
-        if (commands[i].x >= 0) {
-            currX = commands[i].x;
-            // console.log('x: ' + currX);
-        }
-
-        if (commands[i].y >= 0) {
-            currY = commands[i].y;
-            // console.log('y: ' + currY);
-        }
-
-        if (commands[i].c >= 0) {
-            currC = correctAngle(commands[i].c);
-            // console.log('c: ' + currC + ' : ' + commands[i].c);
-        }
-
-        if (currTool && !commands[i].h && (commands[i].x >= 0 || commands[i].y >= 0)) {
-            hit();
-        }
-
+        draw(i);
     }
+    // start();
+}
+
+function draw(i) {
+    if (Object.keys(commands[i]).length === 0) {return false;}
+    console.log(commands[i]);
+
+    if (commands[i].tool >= 0) {
+        var id = commands[i].tool;
+        var cnv = document.createElement('canvas');
+        cnv.setAttribute('id', 'cnv'+id);
+        cnv.setAttribute('width', '2500');
+        cnv.setAttribute('class', 'layer');
+        cnv.setAttribute('height', '1250');
+        view.appendChild(cnv);
+        ctx = cnv.getContext("2d");
+        ctx.translate(2500, 0);
+        ctx.lineWidth = 1;
+        ctx.webkitImageSmoothingEnabled = false;
+        ctx.mozImageSmoothingEnabled = false;
+        ctx.imageSmoothingEnabled = false;
+        currTool = tools[id];
+        ctx.strokeStyle = colors[id];
+        console.log(currTool);
+        return false;
+    }
+
+    if (commands[i].m >= 0) {
+        if (checkM(commands[i].m)) {
+            currM = commands[i].m;
+        }
+        // console.log('m: ' + currM + ' : ' + commands[i].m);
+    }
+
+    if (currTool && commands[i].h) {
+        // console.log('h: ' + commands[i].h);
+        hitLine(commands[i].x, commands[i].y, commands[i].h);
+        return false;
+    }
+
+    if (commands[i].x >= 0) {
+        currX = commands[i].x;
+        // console.log('x: ' + currX);
+    }
+
+    if (commands[i].y >= 0) {
+        currY = commands[i].y;
+        // console.log('y: ' + currY);
+    }
+
+    if (commands[i].c >= 0) {
+        currC = correctAngle(commands[i].c);
+        // console.log('c: ' + currC + ' : ' + commands[i].c);
+    }
+
+    if (currTool && !commands[i].h && (commands[i].x >= 0 || commands[i].y >= 0)) {
+        hit();
+    }
+    return true;
+}
+
+function nextStep() {
+    if (currI >= commands.length-1) {
+        stop();
+    }
+    if (!draw(currI)) {
+        console.log(currI);
+        currI++;
+        nextStep();
+        return;
+    }
+    currI++;
+}
+
+var interval = null;
+
+function start() {
+    // interval = setInterval(nextStep, 5);
+    nextStep();
+}
+
+function stop() {
+    clearInterval(interval);
+    interval = null;
 }
 
 function checkM(m) {
@@ -266,16 +302,19 @@ function hit() {
         point(currX, currY);
         window[currTool.type](currX, currY, currTool.a, currTool.b, currC);
     }
+    // setTimeout(nextStep, 300);
 }
 
 function hitLine(x, y, h) {
     var deltaX = (x) ? Math.round(((x - currX) / h) * 100) / 100 : 0;
     var deltaY = (y) ? Math.round(((y - currY) / h) * 100) / 100 : 0;
+
     for (var i = 1; i < h; i++) {
         currX = parseFloat(currX) + deltaX;
         currY = parseFloat(currY) + deltaY;
         hit();
     }
+
     if (x > 0) {
         currX = x;
     }
@@ -324,7 +363,7 @@ function square(x, y, w, h, c) {
 
 function spec(x, y, w, h, c) {
     if (!specialTools[w]) {
-        specialTools[93](x, y, c);
+        specialTools[999](x, y, c);
         return true;
     }
     specialTools[w](x, y, c);
@@ -356,7 +395,15 @@ specialTools[93] = function (x, y, c) { // M6
     ctx.restore();
 };
 
-
+specialTools[999] = function (x, y, c) { // default
+    rotate(x, y, c);
+    ctx.beginPath();
+    ctx.arc(0, 0, 5, 0, 2 * Math.PI);
+    ctx.moveTo(0, 0);
+    ctx.lineTo(0, 10);
+    ctx.stroke();
+    ctx.restore();
+};
 
 function writeMessage(message) {
     document.getElementById('currPos').innerHTML = message;
@@ -369,8 +416,24 @@ function getMousePos(canvas, evt) {
     };
 }
 
-cnv.addEventListener('mousemove', function(evt) {
+view.addEventListener('mousemove', function(evt) {
     var mousePos = getMousePos(cnv, evt);
-    var message = mousePos.x * (-1) + ', ' + mousePos.y;
+    var message = Math.round(mousePos.x) * (-1) + ', ' + Math.round(mousePos.y);
     writeMessage(message);
 }, false);
+
+
+(function() {
+    var $section = $('#focal');
+    var $panzoom = $section.find('#view').panzoom();
+    $panzoom.parent().on('mousewheel.focal', function( e ) {
+        e.preventDefault();
+        var delta = e.delta || e.originalEvent.wheelDelta;
+        var zoomOut = delta ? delta < 0 : e.originalEvent.deltaY > 0;
+        $panzoom.panzoom('zoom', zoomOut, {
+            increment: 0.1,
+            animate: false,
+            focal: e
+        });
+    });
+})();
