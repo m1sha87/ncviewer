@@ -13,8 +13,6 @@
 }
 
 #focal {
-    /*overflow: hidden;*/
-    /*position: relative;*/
     width: 100%;
     height: 1000px;
 }
@@ -53,4 +51,11 @@ canvas {
     image-rendering: -o-crisp-edges;
     image-rendering: crisp-edges;
     -ms-interpolation-mode: nearest-neighbor;
+}
+
+#toolbar {
+    z-index: 999;
+    position: fixed;
+    left: 10px;
+    top: 10px;
 }

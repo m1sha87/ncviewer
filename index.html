@@ -13,6 +13,12 @@
                 <div>Перетащите сюда файл</div>
             </div>
         </div>
+        <div id="toolbar" hidden>
+            <button onclick="startNC()">Start</button>
+            <button onclick="stopNC()">Stop</button>
+            <input id="speedInput" type="text" value="" style="width: 50px">
+            <button onclick="setInputSpeed()">Set Speed</button>
+        </div>
         <div id="focal">
             <div id="view" hidden>
                 <canvas id="cnv" width="2500" height="1250">

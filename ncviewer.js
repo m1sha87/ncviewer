@@ -1,14 +1,20 @@
 var commands = [];
 var view = document.getElementById("view");
+var toolbar = document.getElementById("toolbar");
+var speedInput = document.getElementById("speedInput");
 var cnv = document.getElementById("cnv");
 var ctx = cnv.getContext("2d");
+var layers = [];
 var tools = [];
 var sheet = null;
 var currTool = null;
 var currX = null;
 var currY = null;
 var currC = null;
+var currM = null;
 var currI = 0;
+var speed = -1;
+var flagStop = false;
 var colors = ['#000000', '#FF00FF', '#800800', '#FF0000', '#800000', '#FFFF00', '#00FF00', '#008000', '#008080', '#000080',
     '#000000', '#FF00FF', '#800800', '#FF0000', '#800000', '#FFFF00', '#00FF00', '#008000', '#008080', '#000080'];
 
@@ -46,6 +52,7 @@ function readFile(file) {
     reader.readAsText(file);
     document.getElementById("load").setAttribute("hidden", "true");
     view.removeAttribute("hidden");
+    toolbar.removeAttribute("hidden");
 }
 
 function parseNC(str) {
@@ -169,27 +176,20 @@ function findTool(str) {
             found[4] = parseInt(found[4]) / 100
         }
         var toolId = tools.length;
-        console.log('toolId: ' + toolId);
         tools[toolId] = {'type': type, 'a': found[3], 'b': found[4], 'color': colors[toolId]};
         return toolId;
     }
 }
 
 function startDraw() {
-    // console.log(commands);
     ctx.translate(2500, 0);
     ctx.strokeStyle = colors[2];
     ctx.strokeRect(-sheet.x, 0, sheet.x, sheet.y);
-    var len = commands.length;
-    for (var i=0; i < len; i++) {
-        draw(i);
-    }
-    // start();
+    nextStep();
 }
 
 function draw(i) {
     if (Object.keys(commands[i]).length === 0) {return false;}
-    console.log(commands[i]);
 
     if (commands[i].tool >= 0) {
         var id = commands[i].tool;
@@ -207,7 +207,7 @@ function draw(i) {
         ctx.imageSmoothingEnabled = false;
         currTool = tools[id];
         ctx.strokeStyle = colors[id];
-        console.log(currTool);
+        layers[id] = cnv;
         return false;
     }
 
@@ -215,42 +215,57 @@ function draw(i) {
         if (checkM(commands[i].m)) {
             currM = commands[i].m;
         }
-        // console.log('m: ' + currM + ' : ' + commands[i].m);
     }
 
     if (currTool && commands[i].h) {
-        // console.log('h: ' + commands[i].h);
         hitLine(commands[i].x, commands[i].y, commands[i].h);
-        return false;
+        if (speed > 0) {
+            return true;
+        }
     }
 
     if (commands[i].x >= 0) {
         currX = commands[i].x;
-        // console.log('x: ' + currX);
     }
 
     if (commands[i].y >= 0) {
         currY = commands[i].y;
-        // console.log('y: ' + currY);
     }
 
     if (commands[i].c >= 0) {
         currC = correctAngle(commands[i].c);
-        // console.log('c: ' + currC + ' : ' + commands[i].c);
     }
 
     if (currTool && !commands[i].h && (commands[i].x >= 0 || commands[i].y >= 0)) {
         hit();
+        if (speed > 0) {
+            setTimeout(nextStep, speed);
+        } else {
+            return false;
+        }
+        return true;
     }
-    return true;
+    return false;
+}
+
+function setSpeed(val) {
+    speed = val;
+    speedInput.value = speed;
+}
+
+function setInputSpeed() {
+    setSpeed(speedInput.value);
 }
 
 function nextStep() {
-    if (currI >= commands.length-1) {
-        stop();
+    if (flagStop || (currI >= commands.length-1)) {
+        flagStop = true;
+        if (speed === -1) {
+            setSpeed(30);
+        }
+        return;
     }
     if (!draw(currI)) {
-        console.log(currI);
         currI++;
         nextStep();
         return;
@@ -258,16 +273,25 @@ function nextStep() {
     currI++;
 }
 
-var interval = null;
-
-function start() {
-    // interval = setInterval(nextStep, 5);
+function startNC() {
+    flagStop = false;
+    if (currI >= commands.length-1) {
+        clear();
+    }
     nextStep();
 }
 
-function stop() {
-    clearInterval(interval);
-    interval = null;
+function clear() {
+    currI = 0;
+    layers.forEach(function (cnv) {
+        var ctx = cnv.getContext("2d");
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, cnv.width, cnv.height);
+    });
+}
+
+function stopNC() {
+    flagStop = true;
 }
 
 function checkM(m) {
@@ -282,7 +306,6 @@ function checkM(m) {
 function correctAngle(c) {
     c = parseFloat(c);
     if (c >= 0 && c < 180) {
-        console.log("-------------" + c);
         return -(c + 180 - 360);
     }
     return -(c - 180 - 360);
@@ -298,30 +321,54 @@ function rotate(x, y, c) {
 
 function hit() {
     if (currM == 25 || currM == 26 || currM == 27) {
-        console.log(currX + " " + currY + ' ' + currTool.type + ' ' + currTool.a);
         point(currX, currY);
         window[currTool.type](currX, currY, currTool.a, currTool.b, currC);
     }
     // setTimeout(nextStep, 300);
 }
 
-function hitLine(x, y, h) {
-    var deltaX = (x) ? Math.round(((x - currX) / h) * 100) / 100 : 0;
-    var deltaY = (y) ? Math.round(((y - currY) / h) * 100) / 100 : 0;
+function hitLine(x, y, hits) {
+    var deltaX = (x) ? Math.round(((x - currX) / hits) * 100) / 100 : 0;
+    var deltaY = (y) ? Math.round(((y - currY) / hits) * 100) / 100 : 0;
+    nextHit(deltaX, deltaY, 1, hits, x, y);
+    // for (var i = 1; i < h; i++) {
+    //     currX = parseFloat(currX) + deltaX;
+    //     currY = parseFloat(currY) + deltaY;
+    //     hit();
+    // }
+    //
+    // if (x > 0) {
+    //     currX = x;
+    // }
+    // if (y > 0) {
+    //     currY = y;
+    // }
+    // hit();
+}
 
-    for (var i = 1; i < h; i++) {
+function nextHit(deltaX, deltaY, step, hits, x, y) {
+    if (step < hits) {
+        step++;
         currX = parseFloat(currX) + deltaX;
         currY = parseFloat(currY) + deltaY;
         hit();
+        if (speed > 0) {
+            setTimeout(nextHit(deltaX, deltaY, step, hits, x, y), speed);
+        } else {
+            nextHit(deltaX, deltaY, step, hits, x, y);
+        }
+    } else {
+        if (x > 0) {
+            currX = x;
+        }
+        if (y > 0) {
+            currY = y;
+        }
+        hit();
+        if (speed > 0) {
+            setTimeout(nextStep, speed);
+        }
     }
-
-    if (x > 0) {
-        currX = x;
-    }
-    if (y > 0) {
-        currY = y;
-    }
-    hit();
 }
 
 function point(x, y) {
